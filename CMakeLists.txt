@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
 cmake_policy(SET CMP0048 NEW)
-project(serial VERSION "1.2.1" LANGUAGES CXX)
+project(serial VERSION "1.2.2" LANGUAGES CXX)
 include(GNUInstallDirs)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+SET(CMAKE_CXX_STANDARD_REQUIRED ON)
+SET(CMAKE_CXX_STANDARD 11)
 
 if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -20,11 +22,17 @@ endif()
 
 option(USE_CATKIN "by default catkin search is turn Off, if required set USE_CATKIN ON" OFF)
 option(BUILD_SHARED_LIBS "default build shared libs, if needed turn this off" ON)
+option(BUILD_TESTING "Testing is disabled unless choosen specifically" OFF)
+
 set(THREADS_PREFER_PTHREAD_FLAG ON)
-set(CMAKE_BUILD_TYPE Release)
-if (CMAKE_BUILD_TYPE STREQUAL Debug)
+if(CMAKE_BUILD_TYPE STREQUAL Debug)
+    message (STATUS "compiling with debug mode on")
+    SET(BUILD_TESTING OFF)
     set(CMAKE_BUILD_TYPE Debug)
+elseif(CMAKE_BUILD_TYPE STREQUAL Release)
+    message (STATUS "compiling with release mode on")
 endif()
+
 
 find_package(Threads REQUIRED)
 if (UNIX AND NOT APPLE)
@@ -93,7 +101,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    
+    IMPORTED_LOCATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
     $<$<PLATFORM_ID:Darwin>:FRAMEWORK TRUE>
     $<$<PLATFORM_ID:Darwin>:FRAMEWORK_VERSION ${PROJECT_VERSION}>
     $<$<PLATFORM_ID:Darwin>:MACOSX_FRAMEWORK_IDENTIFIER org.cmake.${LIBRARY_TARGET_NAME}>
@@ -114,6 +122,6 @@ install(FILES include/serial/serial.h include/serial/v8stdint.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/serial)
 
 ## Tests
-if(CATKIN_ENABLE_TESTING)
+if(CATKIN_ENABLE_TESTING OR BUILD_TESTING)
     add_subdirectory(tests)
 endif()
