@@ -3,11 +3,14 @@ cmake_policy(SET CMP0048 NEW)
 project(serial VERSION "1.2.2" LANGUAGES CXX)
 include(GNUInstallDirs)
 
+# just to make visual studio or xcode happy
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(CMAKE_CXX_STANDARD 11)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 if(WIN32)
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
@@ -15,28 +18,31 @@ if(WIN32)
         set(CMAKE_DEBUG_POSTFIX "d")
     endif()
 endif()
+
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 if(APPLE)
     set(CMAKE_MACOSX_RPATH ON)
 endif()
 
-option(USE_CATKIN "by default catkin search is turn Off, if required set USE_CATKIN ON" OFF)
+option(USE_CATKIN "by default catkin search is turn Off, if required set USE_CATKIN ON" ON)
 option(BUILD_SHARED_LIBS "default build shared libs, if needed turn this off" ON)
 option(BUILD_TESTING "Testing is disabled unless choosen specifically" OFF)
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
 if(CMAKE_BUILD_TYPE STREQUAL Debug)
     message (STATUS "compiling with debug mode on")
-    SET(BUILD_TESTING OFF)
+    SET(BUILD_TESTING ON)
     set(CMAKE_BUILD_TYPE Debug)
 elseif(CMAKE_BUILD_TYPE STREQUAL Release)
     message (STATUS "compiling with release mode on")
+    set(CMAKE_BUILD_TYPE Release)
 endif()
-
 
 find_package(Threads REQUIRED)
 if (UNIX AND NOT APPLE)
-    find_library(rt)
+    find_library(rt_lib NAMES rt)
+    if (rt_lib-NOTFOUND)
+        message(FATAL_ERROR "libRt not found on system.")
+    endif()
 endif()
     # Find catkin
 if (USE_CATKIN)
@@ -88,6 +94,8 @@ endif()
 
 ## Add serial library
 add_library(${PROJECT_NAME} ${serial_SRCS})
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+
 if(APPLE)
     target_link_libraries(${PROJECT_NAME} ${FOUNDATION_LIBRARY} ${IOKIT_LIBRARY})
 elseif(UNIX)
@@ -101,21 +109,24 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    IMPORTED_LOCATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}
+    $<$<NOT:WIN32>:SOVERSION ${PROJECT_VERSION}>
     $<$<PLATFORM_ID:Darwin>:FRAMEWORK TRUE>
     $<$<PLATFORM_ID:Darwin>:FRAMEWORK_VERSION ${PROJECT_VERSION}>
     $<$<PLATFORM_ID:Darwin>:MACOSX_FRAMEWORK_IDENTIFIER org.cmake.${LIBRARY_TARGET_NAME}>
 )
 
 add_subdirectory(examples)
-
+export(TARGETS ${PROJECT_NAME} FILE SerialExports.cmake)
 ## Install executable
 install(TARGETS ${PROJECT_NAME}
-    EXPORT ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}Targets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    PUBLIC_HEADER DESTINATION serial
 )
+
+install(EXPORT ${PROJECT_NAME}Targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake)
 
 # Install headers
 install(FILES include/serial/serial.h include/serial/v8stdint.h
