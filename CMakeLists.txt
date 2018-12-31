@@ -1,8 +1,39 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(serial)
+cmake_policy(SET CMP0048 NEW)
+project(serial VERSION "1.2.1" LANGUAGES CXX)
+include(GNUInstallDirs)
 
-# Find catkin
-find_package(catkin REQUIRED)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR}")
+
+if(WIN32)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    if(MSVC)
+        set(CMAKE_DEBUG_POSTFIX "d")
+    endif()
+endif()
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+if(APPLE)
+    set(CMAKE_MACOSX_RPATH ON)
+endif()
+
+option(USE_CATKIN "by default catkin search is turn Off, if required set USE_CATKIN ON" OFF)
+option(BUILD_SHARED_LIBS "default build shared libs, if needed turn this off" ON)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+set(CMAKE_BUILD_TYPE Release)
+if (CMAKE_BUILD_TYPE STREQUAL Debug)
+    set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+find_package(Threads REQUIRED)
+if (UNIX AND NOT APPLE)
+    find_library(rt)
+endif()
+    # Find catkin
+if (USE_CATKIN)
+    find_package(catkin REQUIRED)
+endif()
 
 if(APPLE)
     find_library(IOKIT_LIBRARY IOKit)
@@ -10,20 +41,21 @@ if(APPLE)
 endif()
 
 if(UNIX AND NOT APPLE)
-    # If Linux, add rt and pthread
-    set(rt_LIBRARIES rt)
-    set(pthread_LIBRARIES pthread)
-    catkin_package(
-        LIBRARIES ${PROJECT_NAME}
-        INCLUDE_DIRS include
-        DEPENDS rt pthread
-    )
+    if (USE_CATKIN)
+        catkin_package(
+            LIBRARIES ${PROJECT_NAME}
+            INCLUDE_DIRS include
+            DEPENDS rt pthread
+        )
+    endif()
 else()
     # Otherwise normal call
-    catkin_package(
-        LIBRARIES ${PROJECT_NAME}
-        INCLUDE_DIRS include
-    )
+    if (USE_CATKIN)
+        catkin_package(
+            LIBRARIES ${PROJECT_NAME}
+            INCLUDE_DIRS include
+        )
+    endif()
 endif()
 
 ## Sources
@@ -51,28 +83,35 @@ add_library(${PROJECT_NAME} ${serial_SRCS})
 if(APPLE)
     target_link_libraries(${PROJECT_NAME} ${FOUNDATION_LIBRARY} ${IOKIT_LIBRARY})
 elseif(UNIX)
-    target_link_libraries(${PROJECT_NAME} rt pthread)
+    target_link_libraries(${PROJECT_NAME} rt ${CMAKE_THREAD_LIBS_INIT})
 else()
     target_link_libraries(${PROJECT_NAME} setupapi)
 endif()
+target_include_directories(${PROJECT_NAME} PUBLIC 
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include/serial>
+)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    
+    $<$<PLATFORM_ID:Darwin>:FRAMEWORK TRUE>
+    $<$<PLATFORM_ID:Darwin>:FRAMEWORK_VERSION ${PROJECT_VERSION}>
+    $<$<PLATFORM_ID:Darwin>:MACOSX_FRAMEWORK_IDENTIFIER org.cmake.${LIBRARY_TARGET_NAME}>
+)
 
-## Uncomment for example
-add_executable(serial_example examples/serial_example.cc)
-add_dependencies(serial_example ${PROJECT_NAME})
-target_link_libraries(serial_example ${PROJECT_NAME})
-
-## Include headers
-include_directories(include)
+add_subdirectory(examples)
 
 ## Install executable
 install(TARGETS ${PROJECT_NAME}
-    ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-    LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+    EXPORT ${PROJECT_NAME}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-## Install headers
+# Install headers
 install(FILES include/serial/serial.h include/serial/v8stdint.h
-  DESTINATION ${CATKIN_GLOBAL_INCLUDE_DESTINATION}/serial)
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/serial)
 
 ## Tests
 if(CATKIN_ENABLE_TESTING)
