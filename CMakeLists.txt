@@ -181,3 +181,5 @@ install(
     DESTINATION
         ${CMAKE_INSTALL_LIBDIR}/cmake/
     )
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/serialCPack.cmake")
