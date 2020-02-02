@@ -1,7 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 cmake_policy(SET CMP0048 NEW)
 project(serial VERSION "1.2.2" LANGUAGES CXX)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
 include(GNUInstallDirs)
+# include(GenerateExportHeader)
 
 # just to make visual studio or xcode happy
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
@@ -108,17 +111,32 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     $<INSTALL_INTERFACE:include/serial>
 )
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
-set_target_properties(${PROJECT_NAME} PROPERTIES
-if (CMAKE_SYSTEM_NAME STREQUAL Darwin)
-    FRAMEWORK TRUE
-    FRAMEWORK_VERSION ${PROJECT_VERSION}
-    MACOSX_FRAMEWORK_IDENTIFIER org.cmake.${LIBRARY_TARGET_NAME}
-    SOVERSION ${PROJECT_VERSION}
-endif()
+# generate_export_header(${PROJECT_NAME})
+
+# set_target_properties(${PROJECT_NAME} PROPERTIES
+# if (CMAKE_SYSTEM_NAME STREQUAL Darwin)
+#     FRAMEWORK TRUE
+#     FRAMEWORK_VERSION ${PROJECT_VERSION}
+#     MACOSX_FRAMEWORK_IDENTIFIER org.cmake.${LIBRARY_TARGET_NAME}
+#     SOVERSION ${PROJECT_VERSION}
+# endif()
+# )
+set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${PROJECT_VERSION})
+set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION ${PROJECT_VERSION})
+# set_property(TARGET ${PROJECT_VERSION} PROPERTY
+#   INTERFACE_serial_MAJOR_VERSION 1)
+set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY
+  COMPATIBLE_INTERFACE_STRING ${PROJECT_VERSION}
 )
 
+
 add_subdirectory(examples)
-export(TARGETS ${PROJECT_NAME} FILE SerialExports.cmake)
+## Tests
+if(CATKIN_ENABLE_TESTING OR BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
+
+# export(TARGETS ${PROJECT_NAME} FILE SerialExports.cmake)
 ## Install executable
 install(TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}Targets
@@ -127,16 +145,39 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     PUBLIC_HEADER DESTINATION serial
     # $<$<PLATFORM_ID:Darwin>:FRAMEWORK "${CMAKE_INSTALL_LIBDIR}">
-    FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    # FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
-
-install(EXPORT ${PROJECT_NAME}Targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake)
 
 # Install headers
 install(FILES include/serial/serial.h include/serial/v8stdint.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/serial)
+install(EXPORT ${PROJECT_NAME}Targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake)
 
-## Tests
-if(CATKIN_ENABLE_TESTING OR BUILD_TESTING)
-    add_subdirectory(tests)
-endif()
+include(CMakePackageConfigHelpers)
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/serialConfigVersion.cmake"
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY AnyNewerVersion
+)
+
+export(EXPORT serialTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/serialTargets.cmake")
+
+configure_file(cmake/serialConfig.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/serialConfig.cmake"
+  COPYONLY
+)
+
+install(EXPORT serialTargets 
+    FILE 
+        serialTargets.cmake
+    DESTINATION 
+        ${CMAKE_INSTALL_LIBDIR}/cmake/)
+
+install(
+    FILES 
+        ${CMAKE_CURRENT_BINARY_DIR}/serialConfig.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/serialConfigVersion.cmake
+    DESTINATION
+        ${CMAKE_INSTALL_LIBDIR}/cmake/
+    )

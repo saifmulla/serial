@@ -1,0 +1,9 @@
+get_filename_component(Serial_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+include(CMakeFindDependencyMacro)
+list(APPEND CMAKE_MODULE_PATH ${Serial_CMAKE_DIR})
+list(REMOVE_AT CMAKE_MODULE_PATH -1)
+if(NOT TARGET serial)
+    include("${Serial_CMAKE_DIR}/SerialTargets.cmake")
+endif()
+
+set(Serial_LIBRARIES serial)
