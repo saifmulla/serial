@@ -4,7 +4,6 @@ project(serial VERSION "1.2.2" LANGUAGES CXX)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_CURRENT_DIR_IN_INTERFACE ON)
 include(GNUInstallDirs)
-# include(GenerateExportHeader)
 
 # just to make visual studio or xcode happy
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR}")
@@ -96,7 +95,7 @@ else()
 endif()
 
 ## Add serial library
-add_library(${PROJECT_NAME} ${serial_SRCS})
+add_library(${PROJECT_NAME} SHARED ${serial_SRCS})
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 if(APPLE)
@@ -113,7 +112,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
 # generate_export_header(${PROJECT_NAME})
 
-# set_target_properties(${PROJECT_NAME} PROPERTIES
+#set_target_properties(${PROJECT_NAME} PROPERTIES
 # if (CMAKE_SYSTEM_NAME STREQUAL Darwin)
 #     FRAMEWORK TRUE
 #     FRAMEWORK_VERSION ${PROJECT_VERSION}
@@ -122,12 +121,12 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_11)
 # endif()
 # )
 set_property(TARGET ${PROJECT_NAME} PROPERTY VERSION ${PROJECT_VERSION})
-set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION ${PROJECT_VERSION})
+#set_property(TARGET ${PROJECT_NAME} PROPERTY SOVERSION ${PROJECT_VERSION})
 # set_property(TARGET ${PROJECT_VERSION} PROPERTY
 #   INTERFACE_serial_MAJOR_VERSION 1)
-set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY
-  COMPATIBLE_INTERFACE_STRING ${PROJECT_VERSION}
-)
+#set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY
+#  COMPATIBLE_INTERFACE_STRING ${PROJECT_VERSION}
+#)
 
 
 add_subdirectory(examples)
@@ -139,11 +138,11 @@ endif()
 # export(TARGETS ${PROJECT_NAME} FILE SerialExports.cmake)
 ## Install executable
 install(TARGETS ${PROJECT_NAME}
-    EXPORT ${PROJECT_NAME}Targets
+    EXPORT serialTargets
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-    PUBLIC_HEADER DESTINATION serial
+    PUBLIC_HEADER DESTINATION "include/serial"
     # $<$<PLATFORM_ID:Darwin>:FRAMEWORK "${CMAKE_INSTALL_LIBDIR}">
     # FRAMEWORK DESTINATION ${CMAKE_INSTALL_LIBDIR}
 )
@@ -151,7 +150,7 @@ install(TARGETS ${PROJECT_NAME}
 # Install headers
 install(FILES include/serial/serial.h include/serial/v8stdint.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/serial)
-install(EXPORT ${PROJECT_NAME}Targets DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake)
+#install(EXPORT ${PROJECT_NAME}Targets DESTINATION ${CMAKE_INSTALL_PREFIX}/share/cmake/serial)
 
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
@@ -163,23 +162,23 @@ write_basic_package_version_file(
 export(EXPORT serialTargets
   FILE "${CMAKE_CURRENT_BINARY_DIR}/serialTargets.cmake")
 
-configure_file(cmake/serialConfig.cmake.in
+configure_package_config_file(cmake/serialConfig.cmake.in
   "${CMAKE_CURRENT_BINARY_DIR}/serialConfig.cmake"
-  COPYONLY
+  INSTALL_DESTINATION
+      ${CMAKE_INSTALL_PREFIX}/share/cmake/serial
 )
 
-install(EXPORT serialTargets 
-    FILE 
-        serialTargets.cmake
-    DESTINATION 
-        ${CMAKE_INSTALL_LIBDIR}/cmake/)
+#install(EXPORT serialTargets 
+#    FILE serialTargets.cmake
+#       ${CMAKE_INSTALL_PREFIX}/share/cmake/serial/)
 
 install(
     FILES 
         ${CMAKE_CURRENT_BINARY_DIR}/serialConfig.cmake
         ${CMAKE_CURRENT_BINARY_DIR}/serialConfigVersion.cmake
+        ${CMAKE_CURRENT_BINARY_DIR}/serialTargets.cmake
     DESTINATION
-        ${CMAKE_INSTALL_LIBDIR}/cmake/
+        ${CMAKE_INSTALL_PREFIX}/share/cmake/serial
     )
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/serialCPack.cmake")
